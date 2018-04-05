@@ -1,0 +1,6 @@
+{
+  "extends": ["nodejs"],
+  "parserOptions": {
+    "sourceType": "module"
+  }
+}
