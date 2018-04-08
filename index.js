@@ -1,13 +1,10 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-
-const expressSession = require('express-session');
+const cors = require('cors');
 const passport = require('passport');
-const { Strategy } = require('passport-local');
 const mongoose = require('mongoose');
 
 const { db } = require('./config');
-const User = require('./models/User');
 
 const app = express();
 
@@ -17,22 +14,10 @@ app.use(
     extended: true
   })
 );
+app.use(cors());
 app.use(passport.initialize());
 app.use(passport.session());
-passport.serializeUser((user, done) => {
-  done(null, user._id);
-});
-passport.deserializeUser((userId, done) => {
-  User.findById(userId, (err, user) => done(err, user));
-});
-app.use(
-  expressSession({
-    resave: false,
-    saveUninitialized: true,
-    secret:
-      process.env.SESSION_SEC || 'You must generate a random session secret'
-  })
-);
+
 app.use((req, res, next) => {
   if (mongoose.connection.readyState) next();
   else {
@@ -47,20 +32,7 @@ app.use((req, res, next) => {
   }
 });
 
-const local = new Strategy((username, password, done) => {
-  User.findOne({ username })
-    .then(user => {
-      if (!user || !user.validPassword(password)) {
-        done(null, false, { message: 'Invalid username/password' });
-      } else {
-        done(null, user);
-      }
-    })
-    .catch(e => done(e));
-});
-passport.use('local', local);
-
-app.use('/', require('./routes')(passport));
+app.use('/', require('./routes'));
 
 const PORT = process.env.PORT || 3000;
 

@@ -1,23 +1,25 @@
 const mongoose = require('mongoose');
-const uniqueValidator = require('mongoose-unique-validator');
 const bcrypt = require('bcrypt');
 
 const { Schema } = mongoose;
+const { ObjectId } = Schema;
 
 const UserSchema = new Schema({
+  id: ObjectId,
   email: {
     type: String,
     unique: true,
     required: true,
     trim: true
   },
+  friends: [{ type: ObjectId, ref: 'Friend' }],
   username: {
     type: String,
     unique: true,
     required: true,
     trim: true
   },
-  passwordHash: {
+  password: {
     type: String,
     required: true
   },
@@ -31,16 +33,38 @@ const UserSchema = new Schema({
   }
 });
 
-UserSchema.plugin(uniqueValidator);
+const User = (module.exports = mongoose.model('User', UserSchema));
 
-UserSchema.methods.validPassword = function(password) {
-  return bcrypt.compareSync(password, this.passwordHash);
+const getUserById = (id, callback) => {
+  User.findById(id, callback);
 };
 
-UserSchema.virtual('password').set(function(value) {
-  this.passwordHash = bcrypt.hashSync(value, 12);
-});
+const getUserByEmail = (email, callback) => {
+  const query = { email };
+  User.findOne(query, callback);
+};
 
-const User = mongoose.model('User', UserSchema);
+const addUser = (newUser, callback) => {
+  bcrypt.genSalt(12, (err, salt) => {
+    bcrypt.hash(newUser.password, salt, (err, hash) => {
+      if (err) throw err;
+      newUser.password = hash;
+      newUser.save(callback);
+    });
+  });
+};
 
-module.exports = User;
+const comparePassword = (candidatePassword, hash, callback) => {
+  bcrypt.compare(candidatePassword, hash, (err, isMatch) => {
+    if (err) throw err;
+    callback(null, isMatch);
+  });
+};
+
+module.exports = {
+  User,
+  getUserByEmail,
+  getUserById,
+  addUser,
+  comparePassword
+};
