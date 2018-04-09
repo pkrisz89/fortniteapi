@@ -11,23 +11,8 @@ const {
   addUser,
   comparePassword
 } = require('../models/User');
-const Friend = require('../models/Friend');
 
 require('../passport')(passport);
-
-function registerUser(req, res) {
-  const { email, password, username, platform } = req.body;
-  if (email && username && password && platform) {
-    const newUser = new User({ email, username, password, platform });
-    addUser(newUser, (err, user) => {
-      if (err) {
-        res.json({ success: false, msg: 'failed to register user' });
-      } else {
-        res.json({ success: true, msg: 'user registered' });
-      }
-    });
-  }
-}
 
 // function addFriend(req, res) {
 //   const { username, platform } = req.body;
@@ -74,7 +59,7 @@ router.get(
 );
 
 router.post('/register', loggedOutOnly, (req, res) => {
-  registerUser(req, res);
+  addUser(req, res);
 });
 
 router.post('/login', loggedOutOnly, (req, res, next) => {
