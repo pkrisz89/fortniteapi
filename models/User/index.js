@@ -59,7 +59,7 @@ const getUserById = (id, callback) => {
 
 const getUserByEmail = (email, callback) => {
   const query = { email };
-  User.findOne(query, callback);
+  RegisteredUser.findOne(query, callback);
 };
 
 const comparePassword = (candidatePassword, hash, callback) => {
@@ -87,6 +87,7 @@ const confirmUser = (id, email, password, res) => {
                 success: false,
                 msg: 'failed to register user'
               });
+              throw err;
             } else {
               user.registered = true;
               user.save((err, success) => {
