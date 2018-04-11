@@ -9,16 +9,15 @@ module.exports = passport => {
   opts.secretOrKey = secret;
   passport.use(
     new Strategy(opts, (jwt_payload, done) => {
-      getUserById(jwt_payload._id, (err, user) => {
-        if (err) {
-          return done(err, false);
-        }
-        if (user) {
-          return done(null, user);
-        } else {
-          return done(null, false);
-        }
-      });
+      getUserById(jwt_payload.id)
+        .then(user => {
+          if (user) {
+            return done(null, user);
+          } else {
+            return done(null, false);
+          }
+        })
+        .catch(err => done(err, false));
     })
   );
 };

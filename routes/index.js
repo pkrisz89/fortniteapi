@@ -2,32 +2,17 @@ const express = require('express');
 const router = express.Router();
 const axios = require('axios');
 const { apikey, secret } = require('../config');
-const { loggedInOnly, loggedOutOnly } = require('../middlewares');
 const jwt = require('jsonwebtoken');
 const passport = require('passport');
 const {
   User,
+  doesUserExist,
   getUserByEmail,
   addUser,
   comparePassword
 } = require('../models/User');
 
 require('../passport')(passport);
-
-// function addFriend(req, res) {
-//   const { username, platform } = req.body;
-//   console.log('0', username, platform);
-//   if (username && platform) {
-//     console.log('1');
-//     const payload = { username, platform };
-//     Friend.create(payload)
-//       .then(friend => {
-//         console.log('2');
-//         console.log(friend);
-//       })
-//       .catch(error => console.log(error));
-//   }
-// }
 
 // function getPlayerDetails(nickname, platform) {
 //   //   const platform = 'pc' || 'xbl' || 'psn';
@@ -58,11 +43,43 @@ router.get(
   }
 );
 
-router.post('/register', loggedOutOnly, (req, res) => {
+router.post(
+  '/friends',
+  passport.authenticate('jwt', { session: false }),
+  (req, res, done) => {
+    console.log('blablahlasdsadasda');
+
+    console.log('kris', req.user);
+    const { username, platform } = req.body;
+    doesUserExist(username).then(user => {
+      if (user) {
+        //grab my user id
+        //check if user already exist in my friends list
+        // if does not exist, then add it
+        //catch the error
+      } else {
+        const newUser = new User({ username, platform });
+        newUser
+          .save()
+          .then(user => {
+            //grab my user id
+            //check if user already exist in my friends list
+            // if does not exist, then add it
+          })
+          .catch(err => {
+            res.json({ msg: 'an error has occured' });
+            throw err;
+          });
+      }
+    });
+  }
+);
+
+router.post('/register', (req, res) => {
   addUser(req, res);
 });
 
-router.post('/login', loggedOutOnly, (req, res, next) => {
+router.post('/login', (req, res, next) => {
   const { email, password } = req.body;
 
   getUserByEmail(email).then(user => {
