@@ -1,8 +1,9 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
-
 const { Schema } = mongoose;
-const { ObjectId } = Schema;
+const Promise = require('bluebird');
+
+Promise.promisifyAll(mongoose);
 
 const UserSchema = new Schema({
   username: {
@@ -27,7 +28,7 @@ const UserSchema = new Schema({
 
 const RegisteredUserSchema = new Schema({
   id: {
-    type: ObjectId,
+    type: Schema.Types.ObjectId,
     ref: 'User'
   },
   email: {
@@ -36,7 +37,7 @@ const RegisteredUserSchema = new Schema({
     required: true,
     trim: true
   },
-  friends: [{ type: ObjectId, ref: 'User', unique: true }],
+  friends: [{ type: Schema.Types.ObjectId, ref: 'User' }],
   password: {
     type: String,
     required: true
@@ -47,19 +48,14 @@ const RegisteredUserSchema = new Schema({
   }
 });
 
-const User = (module.exports = mongoose.model('User', UserSchema));
-const RegisteredUser = (module.exports = mongoose.model(
-  'RegisteredUser',
-  RegisteredUserSchema
-));
+const User = mongoose.model('User', UserSchema);
+const RegisteredUser = mongoose.model('RegisteredUser', RegisteredUserSchema);
 
-const getUserById = (id, callback) => {
-  User.findById(id, callback);
-};
+const getUserById = id => User.findById(id);
 
-const getUserByEmail = (email, callback) => {
+const getUserByEmail = email => {
   const query = { email };
-  RegisteredUser.findOne(query, callback);
+  return RegisteredUser.findOne(query);
 };
 
 const comparePassword = (candidatePassword, hash, callback) => {
@@ -69,56 +65,45 @@ const comparePassword = (candidatePassword, hash, callback) => {
   });
 };
 
-const confirmUser = (id, email, password, res) => {
-  getUserById(id, (err, user) => {
-    if (err) throw err;
-    if (user) {
-      bcrypt.genSalt(12, (err, salt) => {
-        bcrypt.hash(password, salt, (err, hash) => {
-          const newRegisteredUser = new RegisteredUser({
-            id: user._id,
-            email,
-            password: hash
-          });
-
-          newRegisteredUser.save((err, succ) => {
-            if (err) {
-              res.json({
-                success: false,
-                msg: 'failed to register user'
-              });
-              throw err;
-            } else {
-              user.registered = true;
-              user.save((err, success) => {
-                if (err) {
-                  throw err;
-                } else {
-                  res.json({
-                    success: true,
-                    msg: 'user registered'
-                  });
-                }
-              });
-            }
-          });
-        });
+const confirmUser = (user, email, password, res) => {
+  bcrypt.genSalt(12, (err, salt) => {
+    bcrypt.hash(password, salt, (err, hash) => {
+      const newRegisteredUser = new RegisteredUser({
+        id: user._id,
+        email,
+        password: hash
       });
-    }
+
+      newRegisteredUser
+        .save()
+        .then(() => {
+          user.registered = true;
+          user.save().then(() => {
+            res.json({ success: true, msg: 'user registered' });
+          });
+        })
+        .catch(err => {
+          res.json({
+            success: false,
+            msg: 'failed to register user'
+          });
+          throw err;
+        });
+    });
   });
 };
 
 const addUser = (req, res) => {
   const { email, password, username, platform } = req.body;
   const newUser = new User({ username, platform });
-  newUser.save((err, user) => {
-    if (err) throw err;
-
-    getUserById(user._id, (err, addedUser) => {
-      if (err) throw err;
-      confirmUser(addedUser._id, email, password, res);
+  newUser
+    .save()
+    .then(user => {
+      confirmUser(user, email, password, res);
+    })
+    .catch(err => {
+      throw err;
     });
-  });
 };
 
 module.exports = {

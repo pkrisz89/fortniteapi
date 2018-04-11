@@ -65,22 +65,31 @@ router.post('/register', loggedOutOnly, (req, res) => {
 router.post('/login', loggedOutOnly, (req, res, next) => {
   const { email, password } = req.body;
 
-  getUserByEmail(email, (err, user) => {
-    if (err) throw err;
+  getUserByEmail(email).then(user => {
     if (!user) {
-      return res.json({ success: false, msg: 'user not found' });
+      return res.json({
+        success: false,
+        msg: 'user not found'
+      });
+    } else {
+      comparePassword(password, user.password, (err, isMatch) => {
+        if (err) throw err;
+        if (isMatch) {
+          const token = jwt.sign(user.toObject(), secret, {
+            expiresIn: 604800
+          }); //1 week
+          res.json({
+            success: true,
+            token: `JWT ${token}`
+          });
+        } else {
+          res.json({
+            success: false,
+            msg: 'invalid credentials'
+          });
+        }
+      });
     }
-    comparePassword(password, user.password, (err, isMatch) => {
-      if (err) throw err;
-      if (isMatch) {
-        const token = jwt.sign(user.toObject(), secret, {
-          expiresIn: 604800
-        }); //1 week
-        res.json({ success: true, token: `JWT ${token}` });
-      } else {
-        res.json({ success: false, msg: 'invalid credentials' });
-      }
-    });
   });
 });
 
