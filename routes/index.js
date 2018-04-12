@@ -25,7 +25,27 @@ require('../passport')(passport);
 //       console.log(error);
 //     });
 // }
-//   router.delete('/friend/:id', loggedInOnly, (req, res) => {});
+router.delete(
+  '/friend/:id',
+  passport.authenticate('jwt', { session: false }),
+  (req, res, next) => {
+    const authenticatedUser = req.user;
+    const updatedFriends = authenticatedUser.friends.filter(friend => {
+      console.log(friend, req.params.id);
+
+      return friend.toString() !== req.params.id;
+    });
+
+    authenticatedUser
+      .update({ friends: updatedFriends })
+      .then(() => {
+        res.json({ msg: 'friend deleted' });
+      })
+      .catch(err => {
+        throw err;
+      });
+  }
+);
 
 router.get(
   '/friends',
