@@ -25,15 +25,16 @@ require('../passport')(passport);
 //       console.log(error);
 //     });
 // }
-
-//   router.post('/friends', loggedInOnly, (req, res) => {
-//     addFriend(req, res);
-//   });
-//   router.get('/friends', loggedInOnly, (req, res) => {});
 //   router.delete('/friend/:id', loggedInOnly, (req, res) => {});
-//   router.all('/logout', loggedInOnly, (req, res) => {
-//     req.logout();
-//   });
+
+router.get(
+  '/friends',
+  passport.authenticate('jwt', { session: false }),
+  (req, res, next) => {
+    const authenticatedUser = req.user;
+    res.json({ friends: authenticatedUser.friends });
+  }
+);
 
 router.get(
   '/someroute',
@@ -52,7 +53,7 @@ router.post(
     doesUserExist(username).then(user => {
       if (user) {
         const alreadyFriends = authenticatedUser.friends.some(
-          friendId => friendId === user._id
+          friend => friend['$oid'] === user._id
         );
         if (alreadyFriends) {
           res.json({ msg: 'already friends' });
