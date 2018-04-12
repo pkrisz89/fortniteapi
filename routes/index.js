@@ -70,11 +70,17 @@ router.post(
   (req, res, done) => {
     const { username, platform } = req.body;
     const authenticatedUser = req.user;
+
+    if (username === authenticatedUser.username) {
+      return res.json({ msg: 'You cannot add yourself.' });
+    }
+
     doesUserExist(username).then(user => {
       if (user) {
-        const alreadyFriends = authenticatedUser.friends.some(
-          friend => friend['$oid'] === user._id
+        const alreadyFriends = authenticatedUser.friends.filter(
+          friend => friend === user._id
         );
+
         if (alreadyFriends) {
           res.json({ msg: 'already friends' });
         } else {
