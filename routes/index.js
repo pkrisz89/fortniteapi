@@ -47,24 +47,38 @@ router.post(
   '/friends',
   passport.authenticate('jwt', { session: false }),
   (req, res, done) => {
-    console.log('blablahlasdsadasda');
-
-    console.log('kris', req.user);
     const { username, platform } = req.body;
+    const authenticatedUser = req.user;
     doesUserExist(username).then(user => {
       if (user) {
-        //grab my user id
-        //check if user already exist in my friends list
-        // if does not exist, then add it
-        //catch the error
+        const alreadyFriends = authenticatedUser.friends.some(
+          friendId => friendId === user._id
+        );
+        if (alreadyFriends) {
+          res.json({ msg: 'already friends' });
+        } else {
+          authenticatedUser
+            .update({ $push: { friends: user._id } })
+            .then(() => {
+              res.json({ msg: 'friend added' });
+            })
+            .catch(err => {
+              throw err;
+            });
+        }
       } else {
         const newUser = new User({ username, platform });
         newUser
           .save()
           .then(user => {
-            //grab my user id
-            //check if user already exist in my friends list
-            // if does not exist, then add it
+            authenticatedUser
+              .update({ $push: { friends: user._id } })
+              .then(() => {
+                res.json({ msg: 'friend added' });
+              })
+              .catch(err => {
+                throw err;
+              });
           })
           .catch(err => {
             res.json({ msg: 'an error has occured' });
