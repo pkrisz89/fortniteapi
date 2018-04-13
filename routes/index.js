@@ -55,7 +55,17 @@ router.get(
   passport.authenticate('jwt', { session: false }),
   (req, res, next) => {
     const authenticatedUser = req.user;
-    res.json({ friends: authenticatedUser.friends });
+    return Promise.all(
+      authenticatedUser.friends.map(id =>
+        User.findById(id).then(user => ({
+          id: user._id,
+          username: user.username,
+          platform: user.platform
+        }))
+      )
+    ).then(friends => {
+      res.json({ friends });
+    });
   }
 );
 
