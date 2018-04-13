@@ -14,27 +14,30 @@ const {
 
 require('../passport')(passport);
 
-// function getPlayerDetails(nickname, platform) {
-//   //   const platform = 'pc' || 'xbl' || 'psn';
-//   const url = `https://api.fortnitetracker.com/v1/profile/${platform}/${nickname}`;
+router.get(
+  '/stats/:userid/',
+  passport.authenticate('jwt', { session: false }),
+  (req, res, next) => {
+    User.findById(req.params.userid)
+      .then(user => {
+        getPlayerStats(user.username, user.platform).then(response => {
+          res.json({ response });
+        });
+      })
+      .catch(err => {
+        throw err;
+      });
+  }
+);
 
-//   return axios
-//     .get(url, { headers: { 'TRN-Api-Key': apikey } })
-//     .then(response => response.data)
-//     .catch(error => {
-//       console.log(error);
-//     });
-// }
 router.delete(
   '/friend/:id',
   passport.authenticate('jwt', { session: false }),
   (req, res, next) => {
     const authenticatedUser = req.user;
-    const updatedFriends = authenticatedUser.friends.filter(friend => {
-      console.log(friend, req.params.id);
-
-      return friend.toString() !== req.params.id;
-    });
+    const updatedFriends = authenticatedUser.friends.filter(
+      friend => friend.toString() !== req.params.id
+    );
 
     authenticatedUser
       .update({ friends: updatedFriends })
@@ -150,5 +153,16 @@ router.post('/login', (req, res, next) => {
     }
   });
 });
+
+function getPlayerStats(username, platform) {
+  const url = `https://api.fortnitetracker.com/v1/profile/${platform}/${username}`;
+
+  return axios
+    .get(url, { headers: { 'TRN-Api-Key': apikey } })
+    .then(response => response.data)
+    .catch(error => {
+      console.log(error);
+    });
+}
 
 module.exports = router;
