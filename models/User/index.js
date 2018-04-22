@@ -2,6 +2,8 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const { Schema } = mongoose;
 const Promise = require('bluebird');
+const jwt = require('jsonwebtoken');
+const { secret } = require('../../config');
 
 Promise.promisifyAll(mongoose);
 
@@ -84,7 +86,16 @@ const confirmUser = (user, email, password, res) => {
         .then(() => {
           user.registered = true;
           user.save().then(() => {
-            res.json({ success: true, msg: 'user registered' });
+            const token = jwt.sign(user.toObject(), secret, {
+              expiresIn: '10h'
+            }); //1 week
+            const details = jwt.verify(token, secret);
+
+            res.json({
+              userId: user.id,
+              expiry: details.exp,
+              token: `JWT ${token}`
+            });
           });
         })
         .catch(err => {

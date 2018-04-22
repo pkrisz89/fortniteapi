@@ -25,7 +25,7 @@ router.get(
         });
       })
       .catch(err => {
-        throw err;
+        res.status(500).send('error occured!');
       });
   }
 );
@@ -63,17 +63,13 @@ router.get(
           platform: user.platform
         }))
       )
-    ).then(friends => {
-      res.json({ friends });
-    });
-  }
-);
-
-router.get(
-  '/someroute',
-  passport.authenticate('jwt', { session: false }),
-  (req, res, next) => {
-    res.json({ user: req.user });
+    )
+      .then(friends => {
+        res.json({ friends });
+      })
+      .catch(err => {
+        throw err;
+      });
   }
 );
 
@@ -138,26 +134,23 @@ router.post('/login', (req, res, next) => {
 
   getUserByEmail(email).then(user => {
     if (!user) {
-      return res.json({
-        success: false,
-        msg: 'user not found'
-      });
+      res.status(500).send('Wrong username/password!');
     } else {
       comparePassword(password, user.password, (err, isMatch) => {
         if (err) throw err;
         if (isMatch) {
           const token = jwt.sign(user.toObject(), secret, {
-            expiresIn: 604800
+            expiresIn: '10h'
           }); //1 week
+          const details = jwt.verify(token, secret);
+
           res.json({
-            success: true,
+            userId: user.id,
+            expiry: details.exp,
             token: `JWT ${token}`
           });
         } else {
-          res.json({
-            success: false,
-            msg: 'invalid credentials'
-          });
+          res.status(500).send('Wrong username/password!');
         }
       });
     }
