@@ -1,22 +1,43 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
-const passport = require('passport');
 const mongoose = require('mongoose');
+const cookieParser = require('cookie-parser');
+const session = require('express-session');
+const morgan = require('morgan');
+const { secret } = require('./config');
 
 const { db } = require('./config');
 
 const app = express();
 
 app.use(bodyParser.json());
+app.use(morgan('dev'));
+app.use(cookieParser());
 app.use(
   bodyParser.urlencoded({
     extended: true
   })
 );
 app.use(cors());
-app.use(passport.initialize());
-app.use(passport.session());
+app.use(
+  session({
+    key: 'user_sid',
+    secret,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      expires: 600000
+    }
+  })
+);
+
+app.use((req, res, next) => {
+  if (req.cookies.user_sid && !req.session.user) {
+    res.clearCookie('user_sid');
+  }
+  next();
+});
 
 app.use((req, res, next) => {
   if (mongoose.connection.readyState) next();

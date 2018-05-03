@@ -1,9 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const axios = require('axios');
-const { apikey, secret } = require('../config');
-const jwt = require('jsonwebtoken');
-const passport = require('passport');
+const getPlayerStats = require('../services/getPlayerStats');
+
 const {
   User,
   doesUserExist,
@@ -11,88 +9,87 @@ const {
   addUser,
   comparePassword
 } = require('../models/User');
+const sessionChecker = require('../middlewares');
 
-require('../passport')(passport);
-
-router.get(
-  '/stats/:userid/',
-  passport.authenticate('jwt', { session: false }),
-  (req, res, next) => {
-    User.findById(req.params.userid)
-      .then(user => {
-        getPlayerStats(user.username, user.platform).then(response => {
-          res.json({ response });
-        });
-      })
-      .catch(err => {
-        res.status(500).send('error occured!');
+router.get('/stats/:userid/', sessionChecker, (req, res, next) => {
+  User.findById(req.params.userid)
+    .then(user => {
+      getPlayerStats(user.username, user.platform).then(response => {
+        res.json({ response });
       });
-  }
-);
+    })
+    .catch(err => {
+      res.status(500).send('error occured!');
+    });
+});
 
-router.delete(
-  '/friend/:id',
-  passport.authenticate('jwt', { session: false }),
-  (req, res, next) => {
-    const authenticatedUser = req.user;
-    const updatedFriends = authenticatedUser.friends.filter(
-      friend => friend.toString() !== req.params.id
-    );
+router.delete('/friend/:id', sessionChecker, (req, res, next) => {
+  User.findById(req.session.user.id)
+    .then(user =>
+      user.friends.filter(friend => friend.toString() !== req.params.id)
+    )
+    .then(updatedFriends => User.update({ friends: updatedFriends }))
+    .then(() => {
+      res.json({ msg: 'friend deleted' });
+    })
+    .catch(err => {
+      throw err;
+    });
+});
 
-    authenticatedUser
-      .update({ friends: updatedFriends })
-      .then(() => {
-        res.json({ msg: 'friend deleted' });
-      })
-      .catch(err => {
-        throw err;
-      });
-  }
-);
-
-router.get(
-  '/friends',
-  passport.authenticate('jwt', { session: false }),
-  (req, res, next) => {
-    const authenticatedUser = req.user;
-    return Promise.all(
-      authenticatedUser.friends.map(id =>
-        User.findById(id).then(user => ({
-          id: user._id,
-          username: user.username,
-          platform: user.platform
-        }))
+router.get('/friends', sessionChecker, (req, res, next) =>
+  User.findById(req.session.user.id)
+    .then(user =>
+      Promise.all(
+        user.friends.map(id =>
+          User.findById(id).then(user => ({
+            id: user._id,
+            username: user.username,
+            platform: user.platform
+          }))
+        )
       )
     )
-      .then(friends => {
-        res.json({ friends });
-      })
-      .catch(err => {
-        throw err;
-      });
-  }
+    .then(friends => {
+      res.json({ friends });
+    })
+    .catch(err => {
+      throw err;
+    })
 );
 
-router.post(
-  '/friends',
-  passport.authenticate('jwt', { session: false }),
-  (req, res, done) => {
-    const { username, platform } = req.body;
-    const authenticatedUser = req.user;
+router.post('/friends', sessionChecker, (req, res, done) => {
+  const { username, platform } = req.body;
 
-    if (username === authenticatedUser.username) {
-      return res.json({ msg: 'You cannot add yourself.' });
-    }
+  const authenticatedUser = User.findById(req.session.user.id);
 
-    doesUserExist(username).then(user => {
-      if (user) {
-        const alreadyFriends = authenticatedUser.friends.filter(
-          friend => friend === user._id
-        );
+  if (username === req.session.user.username) {
+    return res.json({ msg: 'You cannot add yourself.' });
+  }
 
-        if (alreadyFriends) {
-          res.json({ msg: 'already friends' });
-        } else {
+  doesUserExist(username).then(user => {
+    if (user) {
+      const alreadyFriends = authenticatedUser.friends.filter(
+        friend => friend === user._id
+      );
+
+      if (alreadyFriends) {
+        res.json({ msg: 'already friends' });
+      } else {
+        authenticatedUser
+          .update({ $push: { friends: user._id } })
+          .then(() => {
+            res.json({ msg: 'friend added' });
+          })
+          .catch(err => {
+            throw err;
+          });
+      }
+    } else {
+      const newUser = new User({ username, platform });
+      newUser
+        .save()
+        .then(user => {
           authenticatedUser
             .update({ $push: { friends: user._id } })
             .then(() => {
@@ -101,29 +98,14 @@ router.post(
             .catch(err => {
               throw err;
             });
-        }
-      } else {
-        const newUser = new User({ username, platform });
-        newUser
-          .save()
-          .then(user => {
-            authenticatedUser
-              .update({ $push: { friends: user._id } })
-              .then(() => {
-                res.json({ msg: 'friend added' });
-              })
-              .catch(err => {
-                throw err;
-              });
-          })
-          .catch(err => {
-            res.json({ msg: 'an error has occured' });
-            throw err;
-          });
-      }
-    });
-  }
-);
+        })
+        .catch(err => {
+          res.json({ msg: 'an error has occured' });
+          throw err;
+        });
+    }
+  });
+});
 
 router.post('/register', (req, res) => {
   addUser(req, res);
@@ -139,16 +121,8 @@ router.post('/login', (req, res, next) => {
       comparePassword(password, user.password, (err, isMatch) => {
         if (err) throw err;
         if (isMatch) {
-          const token = jwt.sign(user.toObject(), secret, {
-            expiresIn: '10h'
-          }); //1 week
-          const details = jwt.verify(token, secret);
-
-          res.json({
-            userId: user.id,
-            expiry: details.exp,
-            token: `JWT ${token}`
-          });
+          req.session.user = user;
+          res.json({ success: true });
         } else {
           res.status(500).send('Wrong username/password!');
         }
@@ -156,16 +130,5 @@ router.post('/login', (req, res, next) => {
     }
   });
 });
-
-function getPlayerStats(username, platform) {
-  const url = `https://api.fortnitetracker.com/v1/profile/${platform}/${username}`;
-
-  return axios
-    .get(url, { headers: { 'TRN-Api-Key': apikey } })
-    .then(response => response.data)
-    .catch(error => {
-      console.log(error);
-    });
-}
 
 module.exports = router;
