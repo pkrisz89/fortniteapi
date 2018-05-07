@@ -32,6 +32,8 @@ class FriendsService {
     if (alreadyFriends) {
       res.json({ msg: 'already friends' });
     } else {
+      console.log(self);
+
       self
         .update({ $push: { friends: user._id } })
         .then(() => {
@@ -43,13 +45,13 @@ class FriendsService {
     }
   }
 
-  addFriendAndRegister(username, platform, res) {
+  addFriendAndRegister(self, username, platform, res) {
     const newUser = new User({
       username,
       platform
     });
     newUser.save().then(user => {
-      user
+      self
         .update({ $push: { friends: user._id } })
         .then(() => {
           res.json({ msg: 'friend added' });

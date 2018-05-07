@@ -28,6 +28,18 @@ router.get('/stats/:userid/', sessionChecker, (req, res, next) => {
     });
 });
 
+router.get('/mystats', (req, res, next) => {
+  User.findById(req.session.user.id)
+    .then(user => {
+      getPlayerStats(user.username, user.platform).then(response => {
+        res.json({ response });
+      });
+    })
+    .catch(err => {
+      res.status(500).send('error occured!');
+    });
+});
+
 router.delete('/friend/:id', sessionChecker, (req, res, next) => {
   findAndDelete(req)
     .then(() => {
@@ -52,12 +64,12 @@ router.post('/friends', sessionChecker, (req, res, done) => {
   const { username, platform } = req.body;
 
   return User.findById(req.session.user.id)
-    .then(user => {
+    .then(self => {
       doesUserExist(username).then(friend => {
         if (friend) {
-          addFriend(user, friend, res);
+          addFriend(self, friend, res);
         } else {
-          addFriendAndRegister(username, platform, res);
+          addFriendAndRegister(self, username, platform, res);
         }
       });
     })
