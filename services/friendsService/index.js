@@ -1,43 +1,41 @@
-const { User } = require('../../models/User');
+const {User} = require('../../models/User');
 
 class FriendsService {
   findAndDelete(req) {
-    return User.findById(req.session.user.id).then(user => {
-      const updatedList = user.friends.filter(
-        friend => friend.toString() !== req.params.id
-      );
-      User.update({ friends: updatedList });
-    });
+    return User
+      .findById(req.session.user.id)
+      .then(user => {
+        const updatedList = user
+          .friends
+          .filter(friend => friend.toString() !== req.params.id);
+
+        return user.update({friends: updatedList});
+      });
   }
 
   getAllFriends(req) {
-    return User.findById(req.session.user.id).then(user =>
-      Promise.all(
-        user.friends.map(id =>
-          User.findById(id).then(user => ({
-            id: user._id,
-            username: user.username,
-            platform: user.platform
-          }))
-        )
-      )
-    );
+    return User
+      .findById(req.session.user.id)
+      .then(user => Promise.all(user.friends.map(id => User.findById(id).then(user => ({id: user._id, username: user.username, platform: user.platform})))));
   }
 
   addFriend(self, user, res) {
-    const alreadyFriends = self.friends.some(
-      friend => friend.toString() === user._id.toString()
-    );
+    const alreadyFriends = self
+      .friends
+      .some(friend => friend.toString() === user._id.toString());
 
     if (alreadyFriends) {
-      res.json({ msg: 'already friends' });
+      res.json({msg: 'already friends'});
     } else {
-      console.log(self);
 
       self
-        .update({ $push: { friends: user._id } })
+        .update({
+          $push: {
+            friends: user._id
+          }
+        })
         .then(() => {
-          res.json({ msg: 'friend added' });
+          res.json({msg: 'friend added'});
         })
         .catch(err => {
           throw err;
@@ -46,20 +44,23 @@ class FriendsService {
   }
 
   addFriendAndRegister(self, username, platform, res) {
-    const newUser = new User({
-      username,
-      platform
-    });
-    newUser.save().then(user => {
-      self
-        .update({ $push: { friends: user._id } })
-        .then(() => {
-          res.json({ msg: 'friend added' });
-        })
-        .catch(err => {
-          throw err;
-        });
-    });
+    const newUser = new User({username, platform});
+    newUser
+      .save()
+      .then(user => {
+        self
+          .update({
+            $push: {
+              friends: user._id
+            }
+          })
+          .then(() => {
+            res.json({msg: 'friend added'});
+          })
+          .catch(err => {
+            throw err;
+          });
+      });
   }
 }
 
