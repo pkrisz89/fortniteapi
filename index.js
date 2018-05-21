@@ -5,37 +5,26 @@ const mongoose = require('mongoose');
 const cookieParser = require('cookie-parser');
 const session = require('express-session');
 const morgan = require('morgan');
-const { secret } = require('./config');
+const {secret} = require('./config');
 
-const { db } = require('./config');
+const {db} = require('./config');
 
 const app = express();
 
 app.use(bodyParser.json());
 app.use(morgan('dev'));
 app.use(cookieParser());
-app.use(
-  bodyParser.urlencoded({
-    extended: true
-  })
-);
-app.use(
-  cors({
-    credentials: true,
-    origin: 'http://localhost:3000'
-  })
-);
-app.use(
-  session({
-    key: 'user_sid',
-    secret,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      expires: 600000
-    }
-  })
-);
+app.use(bodyParser.urlencoded({extended: true}));
+app.use(cors({credentials: true, origin: 'http://localhost:3000'}));
+app.use(session({
+  key: 'user_sid',
+  secret,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    maxAge: 604800000 // 1 week
+  }
+}));
 
 app.use((req, res, next) => {
   if (req.cookies.user_sid && !req.session.user) {
@@ -45,7 +34,8 @@ app.use((req, res, next) => {
 });
 
 app.use((req, res, next) => {
-  if (mongoose.connection.readyState) next();
+  if (mongoose.connection.readyState)
+    next();
   else {
     const mongoUrl = process.env.MONGO_URL || db;
     mongoose
