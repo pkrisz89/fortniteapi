@@ -75,7 +75,7 @@ router.post('/register', (req, res) => {
   addUser(req, res);
 });
 
-router.get('/logout', (req, res) => {
+router.post('/logout', (req, res) => {
   if (req.session.user && req.cookies.user_sid) {
     res.clearCookie('user_sid');
   }
