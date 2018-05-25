@@ -15,7 +15,7 @@ app.use(bodyParser.json());
 app.use(morgan('dev'));
 app.use(cookieParser());
 app.use(bodyParser.urlencoded({extended: true}));
-app.use(cors({credentials: true, origin: 'http://localhost:3000'}));
+app.use(cors({credentials: true, origin: 'localhost:8081'}));
 app.use(session({
   key: 'user_sid',
   secret,
@@ -52,7 +52,7 @@ app.use((req, res, next) => {
 
 app.use('/', require('./routes'));
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 8081;
 
 app.listen(PORT, () => {
   console.log(`Listening on port ${PORT}`);
